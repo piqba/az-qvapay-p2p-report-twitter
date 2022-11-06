@@ -73,8 +73,8 @@ public class QvaPayCoinCheck
             .Aggregate("P2P Completed Pairs from @QvaPay\n", (current, stat) =>
                 current + ($"#SQP 💱 #{stat.Coin.Split('_')[1]}\n" +
                            $"📋 Average: {Math.Round(stat.Average, 2)}\n" +
-                           $"⬅️ Average Buy: {Math.Round(stat.AverageBuy, 2)}\n" +
-                           $"➡️ Average Sell: {Math.Round(stat.AverageSell, 2)}\n" +
+                           $"⬅️ Median Buy: {Math.Round(stat.MedianBuy, 2)}\n" +
+                           $"➡️ Median Sell: {Math.Round(stat.MedianSell, 2)}\n" +
                            "---------------\n"));
 
         logger.LogInformation(message);
