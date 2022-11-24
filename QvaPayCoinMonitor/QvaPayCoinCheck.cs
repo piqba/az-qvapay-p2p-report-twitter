@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using QvaPayCoinMonitor.Configuration;
 using QvaPayCoinMonitor.Models;
+using Npgsql;
 
 namespace QvaPayCoinMonitor;
 
@@ -23,6 +24,8 @@ public class QvaPayCoinCheck
     private readonly string _consumerSecret = Environment.GetEnvironmentVariable("ConsumerSecret");
     private readonly string _accessToken = Environment.GetEnvironmentVariable("AccessToken");
     private readonly string _accessTokenSecret = Environment.GetEnvironmentVariable("AccessTokenSecret");
+    private readonly string _postgresDbConnectionString =
+        Environment.GetEnvironmentVariable("PostgresDB_ConnectionString");
 
 
     public QvaPayCoinCheck(
@@ -33,8 +36,11 @@ public class QvaPayCoinCheck
     }
 
     [FunctionName("QvaPayCoinCheck")]
-    public async Task Run([TimerTrigger("0 0 14 * * *")]TimerInfo myTimer, ILogger logger)
+    public async Task Run([TimerTrigger("0 0 15 * * *")]TimerInfo myTimer, ILogger logger)
     {
+
+        await using var dataSource = NpgsqlDataSource.Create(_postgresDbConnectionString);
+
         if (myTimer.IsPastDue)
         {
             return;
@@ -79,6 +85,8 @@ public class QvaPayCoinCheck
 
         logger.LogInformation(message);
 
+        await StoreData(coinStatList, dataSource);
+
         var auth = new SingleUserAuthorizer
         {
             CredentialStore = new SingleUserInMemoryCredentialStore
@@ -93,5 +101,32 @@ public class QvaPayCoinCheck
         var twitter = new TwitterContext(auth);
 
         var tweet = await twitter.TweetAsync(message);
+    }
+
+    private async Task StoreData(List<CoinStat> coinStats, NpgsqlDataSource dataSource)
+    {
+        foreach (var coinStat in coinStats)
+        {
+            // Insert some data
+            await using var cmd = dataSource.CreateCommand(
+                "INSERT INTO exchange_stats (base_coin, compare_to,median_buy,median_sell) " +
+                "VALUES ($1,$2,$3,$4)");
+            cmd.Parameters.AddWithValue(1);
+            cmd.Parameters.AddWithValue(GetCoinId(coinStat.Coin));
+            cmd.Parameters.AddWithValue(coinStat.MedianBuy);
+            cmd.Parameters.AddWithValue(coinStat.MedianSell);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+    }
+
+    private static int GetCoinId(string coin)
+    {
+        return coin switch
+        {
+            "BANK_CUP" => 2,
+            "BANK_MLC" => 3,
+            _ => throw new ArgumentOutOfRangeException()
+        };
     }
 }
