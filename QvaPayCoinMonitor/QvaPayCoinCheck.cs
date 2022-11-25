@@ -113,8 +113,8 @@ public class QvaPayCoinCheck
                 "VALUES ($1,$2,$3,$4)");
             cmd.Parameters.AddWithValue(1);
             cmd.Parameters.AddWithValue(GetCoinId(coinStat.Coin));
-            cmd.Parameters.AddWithValue(coinStat.MedianBuy);
-            cmd.Parameters.AddWithValue(coinStat.MedianSell);
+            cmd.Parameters.AddWithValue(Math.Round(coinStat.MedianBuy,2));
+            cmd.Parameters.AddWithValue(Math.Round(coinStat.MedianSell,2));
 
             await cmd.ExecuteNonQueryAsync();
         }
